@@ -431,3 +431,26 @@ Following results are time-per-operation in nanoseconds at **kN = 100,000** elem
 - Machine: Intel Core i7 (Linux); Apple M1 results omitted for platform consistency
 
 Raw JSON results are in `benchmarks/data/`.
+
+# AI Assistance Statement
+
+## Scope
+
+Unit tests and benchmark code in this repository were initially generated with AI assistance.
+
+## Review
+
+All such code has been:
+- reviewed,
+- revised,
+- and explicitly approved by a human before inclusion.
+
+## Responsibility
+
+Correctness, design decisions, and performance claims are the responsibility of the human author(s).  
+AI is used as a drafting tool, not as a source of truth.
+
+## Notes
+
+- AI-generated code may be incomplete or suboptimal without review.
+- Benchmarks should be interpreted with standard caution (environment, methodology, workload).
