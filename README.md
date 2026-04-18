@@ -1,6 +1,6 @@
 # fastmm
 
-`fastmm::FixedSizeMultiMap` is a fixed-capacity container for the case where the same large object has to live in a few different indices at the same time, with one coherent interface and low overhead.
+`fastmm::FixedSizeMultiMap` is a fixed-capacity, low-latency object store where secondary index membership is *optional*, mutation must preserve cross-index invariants, and failure/rollback must work even when an object is only present in some views.
 
 The target workload is not "storing a lot of stuff somehow and maximizing throughput." (although throughput may not be too bad for a broad range of workloads) It is the tighter case where the same object is hit over and over through different access patterns:
 
@@ -9,8 +9,9 @@ The target workload is not "storing a lot of stuff somehow and maximizing throug
 - non-unique grouping/range queries
 - insertion-order iteration
 - mixed-field access once the object is found
+- modify and reindex in selected views
 
-In other words: one object, many views, no duplicated payload, and no need to keep several containers manually in sync.
+In other words: one object, many (optional) views, no duplicated payload, no need to keep several containers manually in sync, and everything designed in a real-time friendly manner.
 
 ## Why this exists
 
@@ -21,11 +22,14 @@ If you already know the object count upper bound and you care about latency, the
 - allocator traffic and fragmentation show up at the wrong time
 - locality gets worse when hot objects are spread out
 
-This library takes the opposite route:
+While `boost::multi_index` has existed for years and is a powerful general-purpose solution, it is not specifically designed for fixed-capacity, low-latency workloads. In particular, its model assumes that each object participates in all views, whereas modern C++ makes it possible to explore a more tailored design: one centered on stable storage, optional secondary indexing, and minimal overhead for mixed lookup and traversal patterns.
+
+Hence, this library takes the following choices:
 
 - store each object once
 - attach multiple indices to that one object (via `boost::intrusive` containers)
 - choose the index set at compile time
+- allow for indexing/unindexing objects within individual containers at runtime.
 - use a fixed-size LIFO pool for storage
 
 That gives you a unified interface for repeated mixed queries with minimal runtime machinery.
