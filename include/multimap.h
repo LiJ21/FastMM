@@ -17,26 +17,23 @@
 namespace bi = boost::intrusive;
 
 namespace fastmm {
-template <auto tMemberPtr>
-class KeyFrom {
-  template <auto MemberPtr>
-  struct member_type;
+template <auto tMemberPtr> class KeyFrom {
+  template <auto MemberPtr> struct member_type;
 
   template <typename C, typename T, T C::*MemberPtr>
   struct member_type<MemberPtr> {
     using type = T;
   };
 
- public:
+public:
   auto operator()(const auto &obj) const {
     return std::invoke(tMemberPtr, obj);
   }
   using type = typename member_type<tMemberPtr>::type;
 };
 
-template <typename TObject, size_t tSize>
-class FixedSizeLifoPool {
- public:
+template <typename TObject, size_t tSize> class FixedSizeLifoPool {
+public:
   using ObjectType = TObject;
   static constexpr size_t kSize = tSize;
   FixedSizeLifoPool() {
@@ -93,7 +90,7 @@ class FixedSizeLifoPool {
     }
   }
 
- private:
+private:
   size_t get_index(ObjectType &obj) const {
     return static_cast<size_t>(reinterpret_cast<MemSlot *>(&obj) -
                                mem_pool_.data());
@@ -110,31 +107,25 @@ class FixedSizeLifoPool {
   std::bitset<kSize> live_mask_{};
 };
 
-template <size_t tIDX>
-struct Tag {};
+template <size_t tIDX> struct Tag {};
 
-template <typename TIndex, typename TTag>
-struct Named : public TIndex {
+template <typename TIndex, typename TTag> struct Named : public TIndex {
   using Tag = TTag;
 };
 
-template <typename TIndex>
-struct Unnamed;
+template <typename TIndex> struct Unnamed;
 
-template <typename TIndex, typename TTag>
-struct Unnamed<Named<TIndex, TTag>> {
+template <typename TIndex, typename TTag> struct Unnamed<Named<TIndex, TTag>> {
   using Index = TIndex;
   using Tag = TTag;
 };
 
-template <typename TIndex>
-struct Unnamed {
+template <typename TIndex> struct Unnamed {
   using Index = TIndex;
 };
 
 struct List {};
-template <typename TKeyGetter, typename TCompare>
-struct Ordered {
+template <typename TKeyGetter, typename TCompare> struct Ordered {
   using KeyGetter = TKeyGetter;
   using Compare = TCompare;
 };
@@ -146,8 +137,7 @@ struct Unordered {
   static constexpr size_t kBuckets{tBuckets};
 };
 
-template <typename TKeyGetter, typename TCompare>
-struct OrderedNonUnique {
+template <typename TKeyGetter, typename TCompare> struct OrderedNonUnique {
   using KeyGetter = TKeyGetter;
   using Compare = TCompare;
 };
@@ -157,20 +147,21 @@ namespace detail {
 #include <concepts>
 #include <cstddef>
 
-template<class...>
-inline constexpr bool always_false_v = false;
+template <class...> inline constexpr bool always_false_v = false;
 
 template <std::size_t tIDX, typename TTag, typename... TIndices>
 struct GetIndexByTagImpl;
 
-template <std::size_t tIDX, typename TTag, typename TIndex, typename... TIndices>
+template <std::size_t tIDX, typename TTag, typename TIndex,
+          typename... TIndices>
   requires requires { typename TIndex::Tag; } &&
            std::same_as<TTag, typename TIndex::Tag>
 struct GetIndexByTagImpl<tIDX, TTag, TIndex, TIndices...> {
   static constexpr std::size_t index = tIDX;
 };
 
-template <std::size_t tIDX, typename TTag, typename TIndex, typename... TIndices>
+template <std::size_t tIDX, typename TTag, typename TIndex,
+          typename... TIndices>
 struct GetIndexByTagImpl<tIDX, TTag, TIndex, TIndices...> {
   static constexpr std::size_t index =
       GetIndexByTagImpl<tIDX + 1, TTag, TIndices...>::index;
@@ -181,10 +172,8 @@ struct GetIndexByTagImpl<tIDX, TTag> {
   static_assert(always_false_v<TTag>, "Tag not found in any index");
 };
 
-template <typename TIndexType, size_t tIDX>
-struct IndexTrait;
-template <size_t tIDX>
-struct IndexTrait<List, tIDX> : List {
+template <typename TIndexType, size_t tIDX> struct IndexTrait;
+template <size_t tIDX> struct IndexTrait<List, tIDX> : List {
   using Hook =
       bi::list_base_hook<bi::link_mode<bi::safe_link>, bi::tag<Tag<tIDX>>>;
   template <typename TObject>
@@ -215,7 +204,8 @@ struct IndexTrait<Ordered<TKeyGetter, TCompare>, tIDX>
     typename std::remove_reference_t<decltype(container)>::insert_commit_data c;
 
     auto [it, ok] = container.insert_check(TKeyGetter{}(obj), c);
-    if (!ok) return container.end();
+    if (!ok)
+      return container.end();
     return container.insert_commit(obj, c);
   }
 };
@@ -237,8 +227,7 @@ struct IndexTrait<OrderedNonUnique<TKeyGetter, TCompare>, tIDX>
   }
 };
 
-template <typename TBucketType, size_t N>
-struct BucketBase {
+template <typename TBucketType, size_t N> struct BucketBase {
   TBucketType buckets_[N];
 };
 
@@ -276,16 +265,14 @@ struct IndexTrait<Unordered<TKeyGetter, THash, TEqual, tBuckets>, tIDX>
     }
   }
 };
-}  // namespace detail
+} // namespace detail
 
-struct ReindexAll {};   // default
-struct ReindexNone {};  // pure mutation, zero overhead
-template <size_t... tIDXs>
-struct ReindexOnly {
+struct ReindexAll {};  // default
+struct ReindexNone {}; // pure mutation, zero overhead
+template <size_t... tIDXs> struct ReindexOnly {
   using IndexSequence = std::index_sequence<tIDXs...>;
-};  // explicit subset
-template <typename... TTags>
-struct ReindexOnlyByTag {
+}; // explicit subset
+template <typename... TTags> struct ReindexOnlyByTag {
   using TagSequence = std::tuple<TTags...>;
 };
 
@@ -293,11 +280,9 @@ template <typename TObject, template <typename> typename TAllocator,
           typename... TIndices>
 class MultiMap {
   using Object = TObject;
-  template <typename TSlot>
-  using Allocator = TAllocator<TSlot>;
+  template <typename TSlot> using Allocator = TAllocator<TSlot>;
 
-  template <typename T>
-  struct is_unique_index : std::true_type {};
+  template <typename T> struct is_unique_index : std::true_type {};
   template <typename TKeyGetter, typename TCompare>
   struct is_unique_index<OrderedNonUnique<TKeyGetter, TCompare>>
       : std::false_type {};
@@ -305,8 +290,7 @@ class MultiMap {
       is_unique_index<std::tuple_element_t<0, std::tuple<TIndices...>>>::value,
       "Index 0 must be a unique index.");
 
-  template <class Seq, class... Ts>
-  struct index_zipper;
+  template <class Seq, class... Ts> struct index_zipper;
 
   template <std::size_t... Is, class... Ts>
   struct index_zipper<std::index_sequence<Is...>, Ts...> {
@@ -316,62 +300,55 @@ class MultiMap {
   using index_holder =
       typename index_zipper<std::index_sequence_for<TIndices...>,
                             TIndices...>::indices;
-  template <typename TTag>
-  static consteval size_t tag_to_index() {
+  template <typename TTag> static consteval size_t tag_to_index() {
     return detail::GetIndexByTagImpl<0, TTag, TIndices...>::index;
   }
 
-  template <typename TTuple>
-  struct inherit_helper;
+  template <typename TTuple> struct inherit_helper;
 
   template <typename... Ts>
   struct inherit_helper<std::tuple<Ts...>> : public Ts::Hook... {};
 
-  template <typename TTuple>
-  struct container_type;
+  template <typename TTuple> struct container_type;
 
   struct Slot : public Object, public inherit_helper<index_holder> {
     Slot(auto &&...args) : Object(std::forward<decltype(args)>(args)...) {}
   };
 
-  template <typename... Ts>
-  struct container_type<std::tuple<Ts...>> {
+  template <typename... Ts> struct container_type<std::tuple<Ts...>> {
     using type = std::tuple<typename Ts::template Container<Slot>...>;
   };
   using ContainerHolder = typename container_type<index_holder>::type;
 
- public:
+public:
   static constexpr size_t slot_size() { return sizeof(Slot); }
 
-  template <size_t tIDX>
-  const auto &get() const {
+  template <size_t tIDX> const auto &get() const {
     return std::get<tIDX>(containers_);
   }
 
-  template <typename TTag>
-  const auto &get() const {
+  template <typename TTag> const auto &get() const {
     return std::get<tag_to_index<TTag>()>(containers_);
   }
 
-  template <size_t tIDX>
-  auto index(const Slot &s) {
+  template <size_t tIDX> auto index(const Slot &s) {
     auto &container = std::get<tIDX>(containers_);
     auto it = std::tuple_element_t<tIDX, index_holder>::insert(container,
                                                                to_mutable(s));
 
-    if (it == container.end()) return container.cend();
+    if (it == container.end())
+      return container.cend();
     return container.iterator_to(const_cast<const Slot &>(*it));
   }
 
-  template <typename TTag>
-  auto index(const Slot &s) {
+  template <typename TTag> auto index(const Slot &s) {
     return index<tag_to_index<TTag>()>(s);
   }
 
-  template <bool tAddAllIndices = true>
-  const auto insert(auto &&...args) {
+  template <bool tAddAllIndices = true> const auto insert(auto &&...args) {
     auto *pobj = allocator_.create(std::forward<decltype(args)>(args)...);
-    if (pobj == nullptr) return this->cend();
+    if (pobj == nullptr)
+      return this->cend();
 
     auto it = index<0>(*pobj);
     if (it == this->cend()) {
@@ -402,16 +379,14 @@ class MultiMap {
     return it;
   }
 
-  template <size_t tIDX>
-  const auto project(const Slot &slot) const {
+  template <size_t tIDX> const auto project(const Slot &slot) const {
     using ToHook = typename std::tuple_element_t<tIDX, index_holder>::Hook;
     if (!static_cast<const ToHook &>(slot).is_linked())
       return get<tIDX>().cend();
     return get<tIDX>().iterator_to(slot);
   }
 
-  template <typename TTag>
-  const auto project(const Slot &slot) const {
+  template <typename TTag> const auto project(const Slot &slot) const {
     return project<tag_to_index<TTag>()>(slot);
   }
 
@@ -448,7 +423,8 @@ class MultiMap {
         rollback(slot);
         size_t pos = 0;
         (..., ([&]() {
-           if (linked_indices[pos++]) this->index<tIDXs>(slot);
+           if (linked_indices[pos++])
+             this->index<tIDXs>(slot);
          }()));
       }
       return success;
@@ -510,36 +486,33 @@ class MultiMap {
 
   auto &to_mutable(const Slot &s) { return const_cast<Slot &>(s); }
 
-  template <size_t tIDX>
-  bool unindex(const Slot &s) {
+  template <size_t tIDX> bool unindex(const Slot &s) {
     static_assert(tIDX != 0,
                   "Cannot unindex primary index. Use remove() instead.");
     return deindex<tIDX>(to_mutable(s));
   }
 
-  template <typename TTag>
-  bool unindex(const Slot &s) {
+  template <typename TTag> bool unindex(const Slot &s) {
     return unindex<tag_to_index<TTag>()>(s);
   }
 
   bool remove(const Slot &s) { return deindex<0>(to_mutable(s)); }
 
-  template <size_t tIDX>
-  bool remove(auto &&key) {
+  template <size_t tIDX> bool remove(auto &&key) {
     static_assert(
         is_unique_index<
             std::tuple_element_t<tIDX, std::tuple<TIndices...>>>::value,
         "Remove by key requires a unique index. ");
 
     auto sit = this->get_mutable<tIDX>().find(std::forward<decltype(key)>(key));
-    if (sit == this->get_mutable<tIDX>().end()) return false;
+    if (sit == this->get_mutable<tIDX>().end())
+      return false;
     auto it = std::get<0>(containers_).iterator_to(*sit);
     deindex<0>(*it);
     return true;
   }
 
-  template <typename TTag>
-  bool remove(auto &&key) {
+  template <typename TTag> bool remove(auto &&key) {
     return remove<tag_to_index<TTag>()>(std::forward<decltype(key)>(key));
   }
 
@@ -563,34 +536,37 @@ class MultiMap {
   MultiMap(std::initializer_list<TObject> init)
     requires std::is_default_constructible_v<Allocator<Slot>>
   {
-    for (const auto &obj : init) insert(obj);
+    for (const auto &obj : init)
+      insert(obj);
   }
   MultiMap(const MultiMap &) = delete;
   MultiMap &operator=(const MultiMap &) = delete;
   MultiMap(MultiMap &&) = delete;
   MultiMap &operator=(MultiMap &&) = delete;
 
- private:
-  template <size_t tIDX>
-  auto &get_mutable() {
+private:
+  template <size_t tIDX> auto &get_mutable() {
     return std::get<tIDX>(containers_);
   }
 
-  template <size_t tIDX>
-  bool erase_from_index(Slot &s) {
+  template <size_t tIDX> bool erase_from_index(Slot &s) {
     using Hook = typename std::tuple_element_t<tIDX, index_holder>::Hook;
     auto &hook = static_cast<Hook &>(s);
-    if (!hook.is_linked()) return false;
-    auto &container = std::get<tIDX>(containers_);
-    container.erase(container.iterator_to(s));
+    if (!hook.is_linked())
+      return false;
+    erase_from_index_unchecked<tIDX>(s);
     return true;
   }
 
-  template <size_t tIDX>
-  bool deindex(Slot &s) {
+  template <size_t tIDX> void erase_from_index_unchecked(Slot &s) {
+    auto &container = std::get<tIDX>(containers_);
+    container.erase(container.iterator_to(s));
+  }
+
+  template <size_t tIDX> bool deindex(Slot &s) {
     if constexpr (tIDX == 0) {
       [&]<size_t... Is>(std::index_sequence<Is...>) {
-        (..., erase_from_index<sizeof...(TIndices) - 1 - Is>(s));
+        (..., erase_from_index_unchecked<sizeof...(TIndices) - 1 - Is>(s));
       }(std::index_sequence_for<TIndices...>{});
       allocator_.remove(s);
       return true;
@@ -606,17 +582,16 @@ class MultiMap {
 namespace detail {
 template <typename TObject, size_t tSize, typename... TIndices>
 class FixedSizeMultiMapTrait {
- private:
-  template <typename T>
-  using PoolWithSize = FixedSizeLifoPool<T, tSize>;
+private:
+  template <typename T> using PoolWithSize = FixedSizeLifoPool<T, tSize>;
 
- public:
+public:
   using type = MultiMap<TObject, PoolWithSize, TIndices...>;
 };
-}  // namespace detail
+} // namespace detail
 
 template <typename TObject, size_t tSize, typename... TIndices>
 using FixedSizeMultiMap =
     typename detail::FixedSizeMultiMapTrait<TObject, tSize, TIndices...>::type;
-}  // namespace fastmm
+} // namespace fastmm
 #endif
