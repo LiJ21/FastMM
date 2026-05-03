@@ -731,8 +731,8 @@ static void BM_BMI_Mixed(benchmark::State &state) {
       // 1) create burst
       for (size_t j = 0; j < kCreateBurst1 && next_create_idx < kN; ++j) {
         auto i = next_create_idx++;
-        auto [it, ok] = m->insert(
-            Particle{kData.ids[i], kData.xs[i], kData.ys[i], kData.ms[i]});
+        auto [it, ok] =
+            m->emplace(kData.ids[i], kData.xs[i], kData.ys[i], kData.ms[i]);
         if (ok)
           live_ids.push_back(kData.ids[i]);
       }
@@ -773,8 +773,8 @@ static void BM_BMI_Mixed(benchmark::State &state) {
       // 5) create again
       for (size_t j = 0; j < kCreateBurst2 && next_create_idx < kN; ++j) {
         auto i = next_create_idx++;
-        auto [it, ok] = m->insert(
-            Particle{kData.ids[i], kData.xs[i], kData.ys[i], kData.ms[i]});
+        auto [it, ok] =
+            m->emplace(kData.ids[i], kData.xs[i], kData.ys[i], kData.ms[i]);
         if (ok)
           live_ids.push_back(kData.ids[i]);
       }
@@ -851,8 +851,8 @@ static void BM_PoolBMI_Mixed(benchmark::State &state) {
       // 1) create burst
       for (size_t j = 0; j < kCreateBurst1 && next_create_idx < kN; ++j) {
         auto i = next_create_idx++;
-        auto [it, ok] = m->insert(
-            Particle{kData.ids[i], kData.xs[i], kData.ys[i], kData.ms[i]});
+        auto [it, ok] =
+            m->emplace(kData.ids[i], kData.xs[i], kData.ys[i], kData.ms[i]);
         if (ok)
           live_ids.push_back(kData.ids[i]);
       }
@@ -893,8 +893,8 @@ static void BM_PoolBMI_Mixed(benchmark::State &state) {
       // 5) create again
       for (size_t j = 0; j < kCreateBurst2 && next_create_idx < kN; ++j) {
         auto i = next_create_idx++;
-        auto [it, ok] = m->insert(
-            Particle{kData.ids[i], kData.xs[i], kData.ys[i], kData.ms[i]});
+        auto [it, ok] =
+            m->emplace(kData.ids[i], kData.xs[i], kData.ys[i], kData.ms[i]);
         if (ok)
           live_ids.push_back(kData.ids[i]);
       }

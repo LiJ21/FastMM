@@ -345,6 +345,11 @@ public:
     return index<tag_to_index<TTag>()>(s);
   }
 
+  auto iterator_to(auto &&s) {
+    auto &primary = std::get<0>(containers_);
+    return primary.iterator_to(std::forward<decltype(s)>(s));
+  }
+
   template <bool tAddAllIndices = true> const auto insert(auto &&...args) {
     auto *pobj = allocator_.create(std::forward<decltype(args)>(args)...);
     if (pobj == nullptr)
@@ -361,7 +366,9 @@ public:
         return (... || (index<Is + 1>(*pobj) == get<Is + 1>().cend()));
       }(std::make_index_sequence<sizeof...(TIndices) - 1>{});
       if (failed) {
-        deindex<0>(*pobj);
+        auto it = this->iterator_to(*pobj);
+        if (it != this->end())
+          deindex<0>(it);
         return this->cend();
       }
     }
@@ -404,10 +411,11 @@ public:
         !(... || (tIDXs == 0)),
         "Primary index (0) cannot be reindexed. Use remove() instead.");
     auto reindex = [&](Slot &slot) {
+      auto it = this->iterator_to(slot);
       std::bitset<sizeof...(tIDXs)> linked_indices{};
       {
         size_t pos = 0;
-        (..., (linked_indices[pos++] = this->deindex<tIDXs>(slot)));
+        (..., (linked_indices[pos++] = this->deindex<tIDXs>(it)));
       }
       mutate(slot);
 
@@ -489,26 +497,32 @@ public:
   template <size_t tIDX> bool unindex(const Slot &s) {
     static_assert(tIDX != 0,
                   "Cannot unindex primary index. Use remove() instead.");
-    return deindex<tIDX>(to_mutable(s));
+    return deindex<tIDX>(this->iterator_to(to_mutable(s)));
   }
 
   template <typename TTag> bool unindex(const Slot &s) {
     return unindex<tag_to_index<TTag>()>(s);
   }
 
-  bool remove(const Slot &s) { return deindex<0>(to_mutable(s)); }
+  bool remove(const Slot &s) {
+    return deindex<0>(this->iterator_to(to_mutable(s)));
+  }
 
-  template <size_t tIDX> bool remove(auto &&key) {
+  template <size_t tIDX = 0> bool remove(const auto &key) {
     static_assert(
         is_unique_index<
             std::tuple_element_t<tIDX, std::tuple<TIndices...>>>::value,
         "Remove by key requires a unique index. ");
 
-    auto sit = this->get_mutable<tIDX>().find(std::forward<decltype(key)>(key));
-    if (sit == this->get_mutable<tIDX>().end())
-      return false;
-    auto it = std::get<0>(containers_).iterator_to(*sit);
-    deindex<0>(*it);
+    auto sit = this->get_mutable<tIDX>().find(key);
+    if constexpr (tIDX == 0) {
+      deindex<0>(sit);
+    } else {
+      if (sit == this->get_mutable<tIDX>().end())
+        return false;
+      auto it = this->iterator_to(*sit);
+      deindex<0>(it);
+    }
     return true;
   }
 
@@ -549,29 +563,33 @@ private:
     return std::get<tIDX>(containers_);
   }
 
-  template <size_t tIDX> bool erase_from_index(Slot &s) {
+  template <size_t tIDX> bool erase_from_index(auto &&it) {
     using Hook = typename std::tuple_element_t<tIDX, index_holder>::Hook;
-    auto &hook = static_cast<Hook &>(s);
+    auto &hook = static_cast<Hook &>(*it);
     if (!hook.is_linked())
       return false;
-    erase_from_index_unchecked<tIDX>(s);
+    erase_from_index_unchecked<tIDX>(std::forward<decltype(it)>(it));
     return true;
   }
 
-  template <size_t tIDX> void erase_from_index_unchecked(Slot &s) {
+  template <size_t tIDX> void erase_from_index_unchecked(auto &&it) {
     auto &container = std::get<tIDX>(containers_);
-    container.erase(container.iterator_to(s));
+    if constexpr (tIDX == 0) {
+      container.erase(it);
+    } else {
+      container.erase(container.iterator_to(*it));
+    }
   }
 
-  template <size_t tIDX> bool deindex(Slot &s) {
+  template <size_t tIDX> bool deindex(auto &&it) {
     if constexpr (tIDX == 0) {
       [&]<size_t... Is>(std::index_sequence<Is...>) {
-        (..., erase_from_index_unchecked<sizeof...(TIndices) - 1 - Is>(s));
+        (..., erase_from_index_unchecked<sizeof...(TIndices) - 1 - Is>(it));
       }(std::index_sequence_for<TIndices...>{});
-      allocator_.remove(s);
+      allocator_.remove(*it);
       return true;
     } else {
-      return erase_from_index<tIDX>(s);
+      return erase_from_index<tIDX>(std::forward<decltype(it)>(it));
     }
   }
 
