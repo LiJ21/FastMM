@@ -515,11 +515,11 @@ public:
         "Remove by key requires a unique index. ");
 
     auto sit = this->get_mutable<tIDX>().find(key);
+    if (sit == this->get_mutable<tIDX>().end())
+      return false;
     if constexpr (tIDX == 0) {
       deindex<0>(sit);
     } else {
-      if (sit == this->get_mutable<tIDX>().end())
-        return false;
       auto it = this->iterator_to(*sit);
       deindex<0>(it);
     }
@@ -568,25 +568,26 @@ private:
     auto &hook = static_cast<Hook &>(*it);
     if (!hook.is_linked())
       return false;
-    erase_from_index_unchecked<tIDX>(std::forward<decltype(it)>(it));
-    return true;
-  }
-
-  template <size_t tIDX> void erase_from_index_unchecked(auto &&it) {
     auto &container = std::get<tIDX>(containers_);
     if constexpr (tIDX == 0) {
       container.erase(it);
     } else {
       container.erase(container.iterator_to(*it));
     }
+    return true;
   }
 
   template <size_t tIDX> bool deindex(auto &&it) {
     if constexpr (tIDX == 0) {
+      auto &primary = std::get<0>(containers_);
+      if (it == primary.end())
+        return false;
+      Slot &slot = to_mutable(*it);
       [&]<size_t... Is>(std::index_sequence<Is...>) {
-        (..., erase_from_index_unchecked<sizeof...(TIndices) - 1 - Is>(it));
-      }(std::index_sequence_for<TIndices...>{});
-      allocator_.remove(*it);
+        (..., erase_from_index<sizeof...(TIndices) - 1 - Is>(it));
+      }(std::make_index_sequence<sizeof...(TIndices) - 1>{});
+      primary.erase(it);
+      allocator_.remove(slot);
       return true;
     } else {
       return erase_from_index<tIDX>(std::forward<decltype(it)>(it));
