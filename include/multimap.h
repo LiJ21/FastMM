@@ -181,8 +181,6 @@ template <size_t tIDX> struct IndexTrait<List, tIDX> : List {
       bi::list<TObject, bi::base_hook<Hook>, bi::constant_time_size<true>>;
 
   static auto insert(auto &container, auto &obj) {
-    if (static_cast<const Hook &>(obj).is_linked())
-      return container.iterator_to(obj);
     container.push_back(obj);
     return container.iterator_to(obj);
   }
@@ -192,15 +190,13 @@ template <size_t tIDX, typename TKeyGetter, typename TCompare>
 struct IndexTrait<Ordered<TKeyGetter, TCompare>, tIDX>
     : Ordered<TKeyGetter, TCompare> {
   using Hook =
-      bi::set_base_hook<bi::link_mode<bi::safe_link>, bi::tag<Tag<tIDX>>>;
+      bi::set_base_hook<bi::link_mode<bi::normal_link>, bi::tag<Tag<tIDX>>>;
   template <typename TObject>
   using Container =
       bi::set<TObject, bi::base_hook<Hook>, bi::constant_time_size<true>,
               bi::key_of_value<TKeyGetter>, bi::compare<TCompare>,
               bi::optimize_size<false>>;
   static auto insert(auto &container, auto &obj) {
-    if (static_cast<const Hook &>(obj).is_linked())
-      return container.iterator_to(obj);
     typename std::remove_reference_t<decltype(container)>::insert_commit_data c;
 
     auto [it, ok] = container.insert_check(TKeyGetter{}(obj), c);
@@ -221,8 +217,6 @@ struct IndexTrait<OrderedNonUnique<TKeyGetter, TCompare>, tIDX>
                    bi::key_of_value<TKeyGetter>, bi::compare<TCompare>>;
 
   static auto insert(auto &container, auto &obj) {
-    if (static_cast<const Hook &>(obj).is_linked())
-      return container.iterator_to(obj);
     return container.insert(obj);
   }
 };
@@ -255,8 +249,6 @@ struct IndexTrait<Unordered<TKeyGetter, THash, TEqual, tBuckets>, tIDX>
     Container() : Base{}, SetType(BucketTraits(Base::buckets_, tBuckets)) {}
   };
   static auto insert(auto &container, auto &obj) {
-    if (static_cast<const Hook &>(obj).is_linked())
-      return container.iterator_to(obj);
     auto [it, ok] = container.insert(obj);
     if (!ok) {
       return container.end();
@@ -313,6 +305,11 @@ class MultiMap {
 
   struct Slot : public Object, public inherit_helper<index_holder> {
     Slot(auto &&...args) : Object(std::forward<decltype(args)>(args)...) {}
+
+    bool is_linked(size_t idx) const { return linked_.test(idx); }
+    void link(size_t idx) { linked_.set(idx); }
+    void unlink(size_t idx) { linked_.reset(idx); }
+    std::bitset<sizeof...(TIndices)> linked_{};
   };
 
   template <typename... Ts> struct container_type<std::tuple<Ts...>> {
@@ -338,6 +335,7 @@ public:
 
     if (it == container.end())
       return container.cend();
+    it->link(tIDX);
     return container.iterator_to(const_cast<const Slot &>(*it));
   }
 
@@ -360,6 +358,7 @@ public:
       allocator_.remove(*pobj);
       return this->cend();
     }
+    this->to_mutable(*it).link(0);
 
     if constexpr (tAddAllIndices) {
       bool failed = [&]<size_t... Is>(std::index_sequence<Is...>) {
@@ -387,8 +386,7 @@ public:
   }
 
   template <size_t tIDX> const auto project(const Slot &slot) const {
-    using ToHook = typename std::tuple_element_t<tIDX, index_holder>::Hook;
-    if (!static_cast<const ToHook &>(slot).is_linked())
+    if (!slot.is_linked(tIDX))
       return get<tIDX>().cend();
     return get<tIDX>().iterator_to(slot);
   }
@@ -563,15 +561,14 @@ private:
   }
 
   template <size_t tIDX> bool erase_from_index(auto &&it) {
-    using Hook = typename std::tuple_element_t<tIDX, index_holder>::Hook;
-    auto &hook = static_cast<Hook &>(*it);
-    if (!hook.is_linked())
+    if (!it->is_linked(tIDX))
       return false;
     auto &container = std::get<tIDX>(containers_);
     if constexpr (tIDX == 0) {
       container.erase(it);
     } else {
       container.erase(container.iterator_to(*it));
+      it->unlink(tIDX);
     }
     return true;
   }
