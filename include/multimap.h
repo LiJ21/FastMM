@@ -419,12 +419,11 @@ public:
       }
       mutate(slot);
 
-      bool success = false;
+      bool success = true;
       {
         size_t pos = 0;
-        (..., (success |= linked_indices[pos++]
-                              ? this->index<tIDXs>(slot) != get<tIDXs>().end()
-                              : true));
+        (..., (success &= !linked_indices[pos++] ||
+                          this->index<tIDXs>(slot) != get<tIDXs>().end()));
       }
 
       if (!success) {
