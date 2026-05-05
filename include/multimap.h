@@ -54,26 +54,19 @@ public:
       auto &obj = mem_pool_[idx];
       new (&obj) ObjectType(std::forward<decltype(args)>(args)...);
       --free_count_;
-      live_mask_.set(idx);
       return reinterpret_cast<ObjectType *>(&obj);
     }
   }
 
   void remove(ObjectType &obj) {
-    assert(is_alive(obj));
     auto idx = get_index(obj);
     obj.~ObjectType();
     mem_pool_[idx].next_free_idx_ = free_head_;
     free_head_ = idx;
     ++free_count_;
-    live_mask_.reset(idx);
   }
 
   bool owns(ObjectType &obj) const { return get_index(obj) < mem_pool_.size(); }
-
-  bool is_alive(ObjectType &obj) const {
-    return live_mask_.test(get_index(obj));
-  }
 
   size_t size() const { return kSize - free_count_; }
 
@@ -82,8 +75,15 @@ public:
   bool full() const { return free_count_ == 0; }
 
   ~FixedSizeLifoPool() {
+    std::bitset<kSize> live_mask{};
+    size_t idx = free_head_;
+    live_mask.set();
+    while (idx < kSize) {
+      live_mask.reset(idx);
+      idx = mem_pool_[idx].next_free_idx_;
+    } 
     for (size_t i = 0; i < mem_pool_.size(); ++i) {
-      if (live_mask_.test(i)) {
+      if (live_mask.test(i)) {
         auto &obj = mem_pool_[i];
         reinterpret_cast<ObjectType &>(obj).~ObjectType();
       }
@@ -104,7 +104,6 @@ private:
   std::vector<MemSlot> mem_pool_;
   size_t free_head_{0};
   size_t free_count_{kSize};
-  std::bitset<kSize> live_mask_{};
 };
 
 template <size_t tIDX> struct Tag {};
