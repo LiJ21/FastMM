@@ -180,7 +180,7 @@ struct GetIndexByTagImpl<tIDX, TTag> {
 template <typename TIndexType, size_t tIDX> struct IndexTrait;
 template <size_t tIDX> struct IndexTrait<List, tIDX> : List {
   using Hook =
-      bi::list_base_hook<bi::link_mode<bi::safe_link>, bi::tag<Tag<tIDX>>>;
+      bi::list_base_hook<bi::link_mode<bi::normal_link>, bi::tag<Tag<tIDX>>>;
   template <typename TObject>
   using Container =
       bi::list<TObject, bi::base_hook<Hook>, bi::constant_time_size<true>>;
@@ -215,7 +215,7 @@ template <size_t tIDX, typename TKeyGetter, typename TCompare>
 struct IndexTrait<OrderedNonUnique<TKeyGetter, TCompare>, tIDX>
     : OrderedNonUnique<TKeyGetter, TCompare> {
   using Hook =
-      bi::set_base_hook<bi::link_mode<bi::safe_link>, bi::tag<Tag<tIDX>>>;
+      bi::set_base_hook<bi::link_mode<bi::normal_link>, bi::tag<Tag<tIDX>>>;
   template <typename TObject>
   using Container =
       bi::multiset<TObject, bi::base_hook<Hook>, bi::constant_time_size<true>,
@@ -234,7 +234,7 @@ template <size_t tIDX, typename TKeyGetter, typename THash, typename TEqual,
           size_t tBuckets>
 struct IndexTrait<Unordered<TKeyGetter, THash, TEqual, tBuckets>, tIDX>
     : public Unordered<TKeyGetter, THash, TEqual, tBuckets> {
-  using Hook = bi::unordered_set_base_hook<bi::link_mode<bi::safe_link>,
+  using Hook = bi::unordered_set_base_hook<bi::link_mode<bi::normal_link>,
                                            bi::tag<Tag<tIDX>>>;
   template <typename TObject>
   struct Container
