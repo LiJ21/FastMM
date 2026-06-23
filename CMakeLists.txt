@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(FastMM LANGUAGES CXX C)
+project(OptIndex LANGUAGES CXX C)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -28,15 +28,15 @@ set(HDR_LOG_REQUIRED OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(hdrhistogram)
 FetchContent_GetProperties(hdrhistogram)
 
-add_library(FastMM INTERFACE)
-target_include_directories(FastMM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_features(FastMM INTERFACE cxx_std_20)
+add_library(OptIndex INTERFACE)
+target_include_directories(OptIndex INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_features(OptIndex INTERFACE cxx_std_20)
 
 find_package(Boost REQUIRED COMPONENTS container)
 
-file(GLOB_RECURSE FastMM_TEST_SOURCES CONFIGURE_DEPENDS test/*.cc)
+file(GLOB_RECURSE OptIndex_TEST_SOURCES CONFIGURE_DEPENDS test/*.cc)
 
-foreach(test_src IN LISTS FastMM_TEST_SOURCES)
+foreach(test_src IN LISTS OptIndex_TEST_SOURCES)
     file(RELATIVE_PATH rel_path ${CMAKE_CURRENT_SOURCE_DIR}/test ${test_src})
     string(REPLACE "/" "_" target_name ${rel_path})
     string(REPLACE "\\" "_" target_name ${target_name})
@@ -45,7 +45,7 @@ foreach(test_src IN LISTS FastMM_TEST_SOURCES)
 
     add_executable(${target_name} ${test_src})
     target_link_libraries(${target_name} PRIVATE
-        FastMM
+        OptIndex
         Boost::container
         GTest::gtest_main
         hdr_histogram_static
@@ -56,9 +56,9 @@ foreach(test_src IN LISTS FastMM_TEST_SOURCES)
     )
 endforeach()
 
-file(GLOB_RECURSE FastMM_BENCH_SOURCES CONFIGURE_DEPENDS benchmarks/*.cc)
+file(GLOB_RECURSE OptIndex_BENCH_SOURCES CONFIGURE_DEPENDS benchmarks/*.cc)
 
-foreach(bench_src IN LISTS FastMM_BENCH_SOURCES)
+foreach(bench_src IN LISTS OptIndex_BENCH_SOURCES)
     file(RELATIVE_PATH rel_path ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks ${bench_src})
     string(REPLACE "/" "_" target_name ${rel_path})
     string(REPLACE "\\" "_" target_name ${target_name})
@@ -67,7 +67,7 @@ foreach(bench_src IN LISTS FastMM_BENCH_SOURCES)
 
     add_executable(${target_name} ${bench_src})
     target_link_libraries(${target_name} PRIVATE
-        FastMM
+        OptIndex
         Boost::container
         benchmark::benchmark
         hdr_histogram_static
